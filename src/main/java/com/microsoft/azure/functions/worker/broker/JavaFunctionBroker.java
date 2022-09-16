@@ -9,6 +9,7 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.microsoft.azure.functions.dihook.FunctionInstanceFactory;
 import com.microsoft.azure.functions.middleware.FunctionWorkerMiddleware;
 import com.microsoft.azure.functions.rpc.messages.*;
 import com.microsoft.azure.functions.worker.Constants;
@@ -19,6 +20,7 @@ import com.microsoft.azure.functions.worker.binding.ExecutionTraceContext;
 import com.microsoft.azure.functions.worker.chain.FunctionExecutionMiddleware;
 import com.microsoft.azure.functions.worker.chain.InvocationChainFactory;
 import com.microsoft.azure.functions.worker.description.FunctionMethodDescriptor;
+import com.microsoft.azure.functions.worker.di.WorkerInstanceFactory;
 import com.microsoft.azure.functions.worker.reflect.ClassLoaderProvider;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -44,35 +46,49 @@ public class JavaFunctionBroker {
 			throws ClassNotFoundException, NoSuchMethodException, IOException {
 		descriptor.validate();
 		addSearchPathsToClassLoader(descriptor);
-		loadMiddleware();
+		loadExtensions();
 		FunctionDefinition functionDefinition = new FunctionDefinition(descriptor, bindings, classLoaderProvider);
 		this.methods.put(descriptor.getId(), new ImmutablePair<>(descriptor.getName(), functionDefinition));
 	}
 
-	private void loadMiddleware() {
+	private void loadExtensions() {
 		if (loadMiddleware) {
 			synchronized (JavaFunctionBroker.class){
 				if (loadMiddleware) {
-					ArrayList<FunctionWorkerMiddleware> middlewares = new ArrayList<>();
-					try {
-						Thread.currentThread().setContextClassLoader(classLoaderProvider.createClassLoader());
-						ServiceLoader<FunctionWorkerMiddleware> middlewareServiceLoader = ServiceLoader.load(FunctionWorkerMiddleware.class);
-						for (FunctionWorkerMiddleware middleware : middlewareServiceLoader) {
-							middlewares.add(middleware);
-						}
-					} finally {
-						Thread.currentThread().setContextClassLoader(ClassLoader.getSystemClassLoader());
-					}
-					loadFunctionExecutionMiddleWare(middlewares);
+					FunctionInstanceFactory functionInstanceFactory = loadDIFramework();
+					loadMiddleware(functionInstanceFactory);
 					loadMiddleware = false;
 				}
 			}
 		}
 	}
 
-	private void loadFunctionExecutionMiddleWare(ArrayList<FunctionWorkerMiddleware> middlewares) {
+	private FunctionInstanceFactory loadDIFramework() {
+		ServiceLoader<FunctionInstanceFactory> diLoader = ServiceLoader.load(FunctionInstanceFactory.class);
+		Iterator<FunctionInstanceFactory> iterator = diLoader.iterator();
+		if (iterator.hasNext()) {
+			return iterator.next();
+		}
+		return new WorkerInstanceFactory();
+	}
+
+	private void loadMiddleware(FunctionInstanceFactory functionInstanceFactory) {
+		ArrayList<FunctionWorkerMiddleware> middlewares = new ArrayList<>();
+		try {
+			Thread.currentThread().setContextClassLoader(classLoaderProvider.createClassLoader());
+			ServiceLoader<FunctionWorkerMiddleware> middlewareServiceLoader = ServiceLoader.load(FunctionWorkerMiddleware.class);
+			for (FunctionWorkerMiddleware middleware : middlewareServiceLoader) {
+				middlewares.add(middleware);
+			}
+		} finally {
+			Thread.currentThread().setContextClassLoader(ClassLoader.getSystemClassLoader());
+		}
+		loadFunctionExecutionMiddleWare(middlewares, functionInstanceFactory);
+	}
+
+	private void loadFunctionExecutionMiddleWare(ArrayList<FunctionWorkerMiddleware> middlewares, FunctionInstanceFactory functionInstanceFactory) {
 		FunctionExecutionMiddleware functionExecutionMiddleware = new FunctionExecutionMiddleware(
-				FactoryJavaMethodExecutor.createJavaMethodExecutor(this.classLoaderProvider.createClassLoader()));
+				FactoryJavaMethodExecutor.createJavaMethodExecutor(this.classLoaderProvider.createClassLoader(), functionInstanceFactory));
 		middlewares.add(functionExecutionMiddleware);
 		this.invocationChainFactory = new InvocationChainFactory(middlewares);
 	}

@@ -6,6 +6,7 @@ import java.net.*;
 import java.util.*;
 
 import com.microsoft.azure.functions.OutputBinding;
+import com.microsoft.azure.functions.dihook.FunctionInstanceFactory;
 import com.microsoft.azure.functions.worker.binding.*;
 import com.microsoft.azure.functions.worker.description.*;
 import com.microsoft.azure.functions.worker.reflect.*;
@@ -19,10 +20,16 @@ import org.apache.commons.lang3.reflect.TypeUtils;
  */
 public class JavaMethodExecutorImpl implements JavaMethodExecutor {
 
+    private final FunctionInstanceFactory functionInstanceFactory;
+
+    public JavaMethodExecutorImpl(FunctionInstanceFactory functionInstanceFactory) {
+        this.functionInstanceFactory = functionInstanceFactory;
+    }
+
     public void execute(ExecutionContextDataSource executionContextDataSource) throws Exception {
         Object retValue = ParameterResolver.resolveArguments(executionContextDataSource)
                 .orElseThrow(() -> new NoSuchMethodException("Cannot locate the method signature with the given input"))
-                .invoke(() -> executionContextDataSource.getContainingClass().newInstance());
+                .invoke(() -> functionInstanceFactory.getInstance(executionContextDataSource.getContainingClass()));
         executionContextDataSource.getDataStore().setDataTargetValue(BindingDataStore.RETURN_NAME, retValue);
         executionContextDataSource.setReturnValue(retValue);
     }

@@ -1,13 +1,7 @@
 package com.microsoft.azure.functions.worker.broker;
 
-import java.lang.invoke.WrongMethodTypeException;
-import java.lang.reflect.*;
-import java.util.*;
-
-import com.microsoft.azure.functions.OutputBinding;
+import com.microsoft.azure.functions.dihook.FunctionInstanceFactory;
 import com.microsoft.azure.functions.worker.binding.*;
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.commons.lang3.reflect.TypeUtils;
 
 /**
  * Used to executor of arbitrary Java method in any JAR using reflection.
@@ -17,8 +11,11 @@ public class EnhancedJavaMethodExecutorImpl implements JavaMethodExecutor {
 
     private final ClassLoader classLoader;
 
-    public EnhancedJavaMethodExecutorImpl(ClassLoader classLoader) {
+    private final FunctionInstanceFactory functionInstanceFactory;
+
+    public EnhancedJavaMethodExecutorImpl(ClassLoader classLoader, FunctionInstanceFactory functionInstanceFactory) {
         this.classLoader = classLoader;
+        this.functionInstanceFactory = functionInstanceFactory;
     }
 
     public void execute(ExecutionContextDataSource executionContextDataSource) throws Exception {
@@ -26,13 +23,7 @@ public class EnhancedJavaMethodExecutorImpl implements JavaMethodExecutor {
             Thread.currentThread().setContextClassLoader(this.classLoader);
             Object retValue = ParameterResolver.resolveArguments(executionContextDataSource)
                     .orElseThrow(() -> new NoSuchMethodException("Cannot locate the method signature with the given input"))
-                    .invoke(() -> {
-                        Object functionInstance = executionContextDataSource.getFunctionInstance();
-                        if (functionInstance == null){
-                            functionInstance = executionContextDataSource.getContainingClass().newInstance();
-                        }
-                        return functionInstance;
-                    });
+                    .invoke(() -> functionInstanceFactory.getInstance(executionContextDataSource.getContainingClass()));
             executionContextDataSource.getDataStore().setDataTargetValue(BindingDataStore.RETURN_NAME, retValue);
             executionContextDataSource.setReturnValue(retValue);
         } finally {

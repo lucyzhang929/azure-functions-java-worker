@@ -3,7 +3,7 @@ package com.microsoft.azure.functions.worker.binding;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.RetryContext;
 import com.microsoft.azure.functions.TraceContext;
-import com.microsoft.azure.functions.middleware.MiddlewareContext;
+import com.microsoft.azure.functions.internal.MiddlewareContext;
 import com.microsoft.azure.functions.rpc.messages.ParameterBinding;
 import com.microsoft.azure.functions.rpc.messages.TypedData;
 import com.microsoft.azure.functions.worker.WorkerLogManager;
@@ -33,7 +33,6 @@ public final class ExecutionContextDataSource extends DataSource<ExecutionContex
     private final Map<String, Object> middlewareInputMap = new HashMap<>();
     private Object returnValue;
     private Object middlewareOutput;
-    private Object functionInstance;
 
     ExecutionContextDataSource(Builder builder){
         super(null, null, EXECONTEXT_DATA_OPERATIONS);
@@ -123,7 +122,7 @@ public final class ExecutionContextDataSource extends DataSource<ExecutionContex
     }
 
     @Override
-    public void setMiddlewareInput(String key, Object value) {
+    public void updateParameterPayloadByName(String key, Object value) {
         this.middlewareInputMap.put(key, value);
     }
 
@@ -148,20 +147,6 @@ public final class ExecutionContextDataSource extends DataSource<ExecutionContex
     @Override
     public void setMiddlewareOutput(Object value) {
         this.middlewareOutput = value;
-    }
-
-    @Override
-    public void setFunctionInstance(Object functionInstance) {
-        this.functionInstance = functionInstance;
-    }
-
-    @Override
-    public Class<?> getFunctionClass() {
-        return this.containingClass;
-    }
-
-    public Object getFunctionInstance() {
-        return functionInstance;
     }
 
     public static class Builder{
