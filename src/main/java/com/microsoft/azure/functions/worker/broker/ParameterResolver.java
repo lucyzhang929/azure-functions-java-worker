@@ -1,12 +1,7 @@
 package com.microsoft.azure.functions.worker.broker;
 
 import java.lang.invoke.WrongMethodTypeException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,7 +41,10 @@ public class ParameterResolver {
                     argument = dataStore.getOrAddDataTarget(invokeInfo.getOutputsId(), paramName, paramType, false);
                 }
                 else if (paramName != null && !paramName.isEmpty()) {
-                    argument = dataStore.getDataByName(paramName, paramType);
+                    argument = buildMiddlewareInput(executionContextDataSource.getMiddlewareInputByName(paramName));
+                    if (!argument.isPresent()){
+                        argument = dataStore.getDataByName(paramName, paramType);
+                    }
                 }
                 else if (paramName == null && !paramBindingNameAnnotation.isEmpty()) {
                     argument = dataStore.getTriggerMetatDataByName(paramBindingNameAnnotation, paramType);
@@ -65,6 +63,11 @@ public class ParameterResolver {
             ExceptionUtils.rethrow(ex);
             return null;
         }
+    }
+
+    private static Optional<BindingData> buildMiddlewareInput(Object input) {
+        if (input == null) return Optional.empty();
+        return Optional.of(new BindingData(input));
     }
 
     public static final class InvokeInfoBuilder extends JavaMethodInvokeInfo.Builder {

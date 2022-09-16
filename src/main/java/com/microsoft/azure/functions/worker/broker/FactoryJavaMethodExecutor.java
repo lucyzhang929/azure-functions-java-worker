@@ -6,8 +6,7 @@ import org.apache.commons.lang3.SystemUtils;
 import java.net.MalformedURLException;
 
 public class FactoryJavaMethodExecutor {
-    public static JavaMethodExecutor createJavaMethodExecutor(ClassLoader classLoader)
-            throws MalformedURLException, ClassNotFoundException, NoSuchMethodException {
+    public static JavaMethodExecutor createJavaMethodExecutor(ClassLoader classLoader) {
         if(SystemUtils.IS_JAVA_1_8) {
             WorkerLogManager.getSystemLogger().info("Loading JavaMethodExecutorImpl");
             return new JavaMethodExecutorImpl();
