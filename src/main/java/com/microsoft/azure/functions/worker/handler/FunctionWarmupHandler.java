@@ -33,12 +33,11 @@ public class FunctionWarmupHandler extends MessageHandler<FunctionWarmupRequest,
             RpcFunctionMetadata.Builder rpcFunctionMetadataBuilder = RpcFunctionMetadata.newBuilder();
             rpcFunctionMetadataBuilder.setName("WarmupFunc");
             rpcFunctionMetadataBuilder.setEntryPoint("com.azfs.java.Function.run");
-            rpcFunctionMetadataBuilder.setScriptFile("D:/code/azfs/host/prs/azure-functions-host/src/WebJobs.Script.WebHost/bin/Debug/net6.0/workers/java/annotationLib/java-warmup-app-1.0-SNAPSHOT.jar");
+            String workerDirectory = functionWarmupRequest.getWorkerDirectory();
+            rpcFunctionMetadataBuilder.setScriptFile(workerDirectory + "/annotationLib/java-warmup-app-1.0-SNAPSHOT.jar");
             Map<String, BindingInfo> map = new HashMap<>();
-            BindingInfo httpTrigger = BindingInfo.newBuilder().setDirection(BindingInfo.Direction.in).setDataType(BindingInfo.DataType.undefined).setType("httpTrigger").build();
-            map.put("req", httpTrigger);
-            BindingInfo http = BindingInfo.newBuilder().setDirection(BindingInfo.Direction.out).setDataType(BindingInfo.DataType.undefined).setType("http").build();
-            map.put("$return", http);
+            BindingInfo warmupTrigger = BindingInfo.newBuilder().setDirection(BindingInfo.Direction.in).setDataType(BindingInfo.DataType.undefined).setType("warmupTrigger").build();
+            map.put("warmupContext", warmupTrigger);
             rpcFunctionMetadataBuilder.putAllBindings(map);
             final UUID functionId = UUID.randomUUID();
             functionLoadRequestBuilder.setFunctionId(functionId.toString());
@@ -51,8 +50,8 @@ public class FunctionWarmupHandler extends MessageHandler<FunctionWarmupRequest,
             invocationRequestBuilder.setFunctionId(functionId.toString()).setInvocationId(UUID.randomUUID().toString());
             List<ParameterBinding> inputDataList = new ArrayList<>();
             ParameterBinding.Builder parameterBindingBuilder = ParameterBinding.newBuilder();
-            parameterBindingBuilder.setName("req");
-            parameterBindingBuilder.setData(TypedData.newBuilder().setHttp(RpcHttp.newBuilder().setMethod("GET")));
+            parameterBindingBuilder.setName("warmupContext");
+            parameterBindingBuilder.setData(TypedData.newBuilder().setString("warmup"));
             inputDataList.add(parameterBindingBuilder.build());
             invocationRequestBuilder.addAllInputData(inputDataList);
             String invocationResult = new InvocationRequestHandler(this.javaFunctionBroker).execute(invocationRequestBuilder.build(), InvocationResponse.newBuilder());
