@@ -137,7 +137,7 @@ public class JavaFunctionBroker {
 		if(function.getLibDirectory().isPresent()) {
 			registerWithClassLoaderProvider(function.getLibDirectory().get());
 		}else{
-			registerJavaLibrary();
+			registerJavaLibrary(function.isWarmup());
 		}
 	}
 
@@ -149,9 +149,9 @@ public class JavaFunctionBroker {
 		}
 	}
 
-	void registerJavaLibrary(){
+	void registerJavaLibrary(boolean isWarmup){
 		try {
-			if (!isTesting()){
+			if (!isTesting() && !isWarmup){
 				addJavaAnnotationLibrary();
 			}
 		} catch (Exception ex) {
