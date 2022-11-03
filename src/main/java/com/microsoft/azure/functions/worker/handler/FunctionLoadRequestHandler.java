@@ -1,7 +1,6 @@
 package com.microsoft.azure.functions.worker.handler;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 
 import com.microsoft.azure.functions.worker.WorkerLogManager;
@@ -15,7 +14,6 @@ public class FunctionLoadRequestHandler extends MessageHandler<FunctionLoadReque
               FunctionLoadResponse::newBuilder,
               FunctionLoadResponse.Builder::setResult,
               StreamingMessage.Builder::setFunctionLoadResponse);
-
         this.broker = broker;
     }
 
