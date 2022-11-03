@@ -273,3 +273,6 @@ pkg/
 
 # Mac specific gitignore
 .DS_Store
+
+# azure functions core tools
+local.settings.json
